@@ -44,7 +44,7 @@ video_clf_lstm.py: video classification , the framework is CNN+LSTM  as Fig.1.
 
 #### Modal Discussion:
 
-https://github.com/wangjialin114/VideoEmotion/blob/master/Model%20Discussion.html
+[some detailed discussion about the model implementation](https://github.com/wangjialin114/VideoEmotion/blob/master/Model%20Discussion.md)
 
 ## TODO
 

@@ -2,6 +2,8 @@
 
 all the codes are writen in python.
 
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
+
 ![](imgs/cnn_lstm.png)
 
 ​					Fig.1 Video Classification

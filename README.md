@@ -2,8 +2,6 @@
 
 all the codes are writen in python.
 
-<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
-
 ![](imgs/cnn_lstm.png)
 
 ​					Fig.1 Video Classification
@@ -43,6 +41,10 @@ frame_to_h5.py: load the image and save them to the hdf file
 #### Classification
 
 video_clf_lstm.py: video classification , the framework is CNN+LSTM  as Fig.1.
+
+#### Modal Discussion:
+
+https://github.com/wangjialin114/VideoEmotion/blob/master/Model%20Discussion.html
 
 ## TODO
 

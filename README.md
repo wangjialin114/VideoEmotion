@@ -1,6 +1,6 @@
 # About Codes
 
-all the codes are writen in python.
+All the codes are writen in python. For the terrible support of the latex in the github, you could install the plug-in "Github With MathJax" in the Chrome to see the math formula in the mardown file.
 
 If you have any problems, please feel free to contact me:)
 
@@ -30,7 +30,7 @@ If you have any problems, please feel free to contact me:)
 
 - activate the python environment: `source activate tensorflow-gpu`	
 
-- extract the frames : `python extract_fram.py`
+- extract the frames : `python extract_frame.py`
 
 - save the frames to the hdf file: `python frame_to_h5.py`
 

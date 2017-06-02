@@ -2,6 +2,8 @@
 
 all the codes are writen in python.
 
+If you have any problems, please feel free to contact me:)
+
 ![](imgs/cnn_lstm.png)
 
 ​					Fig.1 Video Classification
@@ -17,6 +19,28 @@ all the codes are writen in python.
 - librosa
 
   and for other python packages, you can use `pip install package-name ` whenever there comes up a `ImportError`.
+
+
+
+## How to use
+
+- login in the linux server via ssh
+
+- change the working directory:  `cd /home/ubuntu/Documents/jialin/src/bilibili`
+
+- activate the python environment: `source activate tensorflow-gpu`	
+
+- extract the frames : `python extract_fram.py`
+
+- save the frames to the hdf file: `python frame_to_h5.py`
+
+- extract the CNN feature(fc7) and save to the hdf file: `python extract_fc7.py`
+
+- Use the LSTM to classify the video: `python video_clf_lstm.py`
+
+  And now you can just run the last step :  `python video_clf_lstm.py`, you will see the training accuracy should be 1.00(i.e. 100%), which means overfitting.
+
+  ***Note:*** when you want to training in a normal mode instead of the overfitting mode, you had better change the "batch generation function" in the train_network function in the file video_clf_lstm.py. 
 
 ## Code Guide
 

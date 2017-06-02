@@ -45,6 +45,7 @@ class video_lstm(object):
         self.fc_size = fc_size
         self.output_size = output_size
         self.lr_decay_rate = lr_decay_rate
+        self.frame_per_cluster = 3  # number of extracted frames per cluster
         self.log = log
         # build the net
         self.build_lstm()
@@ -103,9 +104,31 @@ class video_lstm(object):
         self.latest_checkpoint = tf.train.latest_checkpoint(self.log)
         # add the saver
         self.saver = tf.train.Saver()
-        self.sess = tf.Session()
-        self.sess.run(tf.global_variables_initializer())
+        
+        
+    def generate_next_batch(self, x, y, iter_num):
+        """traverse the dataset
+        
+        Args:
+            x: the hdf file, the amount of the data that cannot be stored in the memory[video_num, frame_num, fc_size]
+            y: the hdf file
+            iter_num: denotes the data position
+        Returns:
+            x_batch: a array whose shape should be [batch_size, frame_num, fc_size]
+            y_batch: a array whose shape should be [batch_size, 1]
+        """
+        
+        k = np.array(range(iter_num*self.batch_size,(iter_num+1)*self.batch_size))
+        x_batch = np.zeros([self.batch_size, self.frame_num, self.fc_size])
+        for i in range(k.shape[0]):
+            video_seq = k[i]
+            for j in range(self.frame_num):
+                selected_frame_seq = 0  ## mainly for overfitting, so proof that our model is right
+                x_batch[i, j, :] = x[video_seq, j*self.frame_per_cluster+selected_frame_seq, :]
+            
+        y_batch = y[k]
 
+        return x_batch, y_batch
     def generate_batch(self, x, y):
         """prepare the data batch that will be fed into the network
         
@@ -113,19 +136,50 @@ class video_lstm(object):
         thus we take a continual examples for convenience
         
         Args:
-            x: the hdf file, the amount of the data that cannot be stored in the memory
+            x: the hdf file, the amount of the data that cannot be stored in the memory[video_num, frame_num, fc_size]
             y: the hdf file
         Returns:
             x_batch: a array whose shape should be [batch_size, frame_num, fc_size]
             y_batch: a array whose shape should be [batch_size, 1]
         """
         
-        k = np.random.randint(low=0, high=y.shape[0]-self.batch_size)
-        x_batch = x[k:k+self.batch_size]
-        y_batch = np.squeeze(y[k:k+self.batch_size])
+        k = np.random.randint(low=0, high=y.shape[0]-self.batch_size, size=[self.batch_size])
+        x_batch = np.zeros([self.batch_size, self.frame_num, self.fc_size])
+        for i in range(k.shape[0]):
+            video_seq = k[i]
+            for j in range(self.frame_num):
+                selected_frame_seq = np.random.randint(self.frame_per_cluster)
+                x_batch[i, j, :] = x[video_seq, j*self.frame_per_cluster+selected_frame_seq, :]
+                
+        y_batch = y[k]
 
         return x_batch, y_batch
-
+    
+    def read_class_file(self, video_info_filename, success_filename):
+        """read the class of the video
+        
+        Args:
+            video_info_filename: the path of the file that record the video information
+            success_filename: the path of the file that record the video_id extracted successfully
+        Returns:
+            y: the array of the successfully extracted video emotion class
+        """
+        
+        # 11 cols, the ist is the video_id, the last 2 cols are the category and the sub_category
+        f = open(video_info_filename, encoding="utf-8")
+        info = f.readlines()
+        video_class = {}
+        for item in info:
+            video_info = item.split()
+            video_class[video_info[0]] = video_info[-2]  # store the category
+        f.close()
+        
+        f = open(success_filename, "r")
+        video_id = f.readlines()
+        y = np.array([video_class[x.strip()] for x in video_id])
+        return y
+        
+    
     def eval_network(self, x_test, y_test):
         """eval the network using the test dataset
         
@@ -147,7 +201,7 @@ class video_lstm(object):
             mean_accuracy.append(accuracy)
         print("eval -- loss: %f, accuracy: %f" %(np.mean(mean_loss), np.mean(mean_accuracy)))
 
-    def train_network(self, x_train, y_train, x_test, y_test):
+    def train_network(self, x_train, y_train):
         """training the network using the training dataset
         
         Args:
@@ -158,43 +212,46 @@ class video_lstm(object):
         Returns:
             None
         """
-        
+        init_op = tf.group(tf.global_variables_initializer(),
+                           tf.local_variables_initializer())
+        self.sess = tf.Session()
+        self.sess.run(init_op)
         # check if there exists checkpoint, if true, load it
-        if self.latest_checkpoint:
-            print("Load the checkpoint")
-            self.saver.restore(self.sess, self.latest_checkpoint)
-        
-        mean_loss = []
-        mean_accuracy = []
-        for epoch in tqdm.tqdm(range(self.max_epochs)):
-            batch_iter_num = y_train.shape[0]//self.batch_size
+        ckpt = tf.train.get_checkpoint_state(self.log)
+        print(ckpt)
+        if ckpt and ckpt.model_checkpoint_path:
+            print("Load the checkpoint: %s" % (ckpt.model_checkpoint_path))
+            self.saver.restore(self.sess, ckpt.model_checkpoint_path)
+        # train
+        #for epoch in tqdm.tqdm(range(self.max_epochs)):
+        for epoch in range(self.max_epochs):
+            mean_loss = []
+            mean_accuracy = []
+            batch_iter_num = y_train[0:100].shape[0]//self.batch_size
             for i in range(batch_iter_num):
-                x_batch, y_batch = self.generate_batch(x_train, y_train)
-                _, loss, accuracy = self.sess.run([self.train_op, self.loss, self.accuracy], feed_dict={self.x: x_batch, self.y:y_batch})
+                x_batch, y_batch = self.generate_next_batch(x_train, y_train, i)
+                _, loss, accuracy, step = self.sess.run([self.train_op, self.loss, self.accuracy, self.global_step], feed_dict={self.x: x_batch, self.y:y_batch})
                 mean_loss.append(loss)
                 mean_accuracy.append(accuracy)
-                if i % 100 == 0 and i > 0:
-                    self.saver.save(self.sess, self.log+"/model.ckpt",global_step=i+1)
+                #if i % 100 == 0 and i > 0:
+                #    self.saver.save(self.sess, self.log+"/model.ckpt",global_step=i+1)
                     #print("save the model")
                     #print("step %d / %d: loss : %f, accuracy : %f" %(i, batch_iter_num, np.mean(mean_loss), np.mean(mean_accuracy)))
-                    mean_loss = []
-                    mean_accuracy = []
+                #    mean_loss = []
+                #    mean_accuracy = []
             ## evalating the network
-            self.eval_network(x_test, y_test)
-
+            #self.eval_network(x_test, y_test)
+            if epoch % 5 == 0:
+                self.saver.save(self.sess, self.log+"/model.ckpt",global_step=step)
+            print("epoch %d --- loss : %f, accuracy : %f" %(epoch, np.mean(mean_loss), np.mean(mean_accuracy)))
 if __name__ == "__main__":
-    video_num = 1600
-    frame_num = 10
-    fc_size = 4096
-    fc7_f = h5py.File("videofc7.h5", "r")
-    video_f = h5py.File("video.h5", "r")
-    fc7_h5 = fc7_f.require_dataset(name="fc_7", shape=(video_num, frame_num, fc_size), dtype="float32", chunks=True)
-    labels = video_f.require_dataset(name="video_label", shape=(video_num, 1), dtype="float32")
-    clf = video_lstm(max_epochs=20)
+    fc7_f = h5py.File("frame_fc7.h5", "r")
+    fc7_h5 = fc7_f["fc_7"]
+    clf = video_lstm(learning_rate=1e-3, max_epochs=500)
+    labels = clf.read_class_file("video_1_final.txt", "success_video_id.txt") 
     t_start = time()
     clf.train_network(fc7_h5, labels)
     t_end = time()
     t_cost = t_end - t_start
     print("cost %f seconds" % (t_cost))
     fc7_f.close()
-    video_f.close()

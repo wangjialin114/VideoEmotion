@@ -44,11 +44,11 @@ class ImageToHdf(object):
         Args:
             filename: the image file name
         Returns:
-            a ndarray whose shape is 224*224*3
+            crop_image: a ndarray whose shape is 224*224*3
         """
         
         # check if the file exists
-        if os.path.exists(self, filename):
+        if os.path.exists(filename):
             pass
         else:
             print("file %s not exists" % (filename))
@@ -73,9 +73,9 @@ class ImageToHdf(object):
             upper = lower - min_edge
             crop_image = img.crop((left, upper, right, lower))
             # resize the image
-        crop_image = crop_image.resize([224, 224], resample=4)
-    
-        return np.asarray(crop_image)
+        crop_image = np.asarray(crop_image.resize([224, 224], resample=4))
+        print(crop_image.shape)
+        return crop_image
     
     def frames_to_hdf(self):
         """ traverse all the images, resize the image, and store them to the hdf filem
@@ -103,7 +103,8 @@ class ImageToHdf(object):
 
 if __name__ == "__main__":
     # h5py data
-    h5f = h5py.File("frame_audio.h5", "w")
+    h5f = h5py.File("frame.h5", "w")
     f_t_h = ImageToHdf(h5f)
-    f_t_h.close()
+    f_t_h.frames_to_hdf()
+    h5f.close()
 

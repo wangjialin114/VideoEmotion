@@ -147,7 +147,7 @@ class ExtractFrame(object):
                         break
                     elif t > duration - 1.5:  
                          t = duration - 1.5
-                    shell_cmd_frame = "ffmpeg -ss "+str(t)+" -i "+video_name+" -frames:v 1 "+"frames/"+str(video_id)+"_"+str(i)+".jpg" +" -v error -y"
+                    shell_cmd_frame = "ffmpeg -ss "+str(t)+" -i "+video_name+" -frames:v 1 "+"frames/"+str(video_id)+"_"+str(i*3+j)+".jpg" +" -v error -y"
                     out = subprocess.getstatusoutput(shell_cmd_frame)
                     if out[1] != "":
                         failed_video.append(video_id)
@@ -156,7 +156,7 @@ class ExtractFrame(object):
                         self.logger.error(out[1])
                         break
                     # check if the output file is empty
-                    ext_filename = "./frames/" + str(video_id) + "_" + str(i) + ".jpg"
+                    ext_filename = "./frames/" + str(video_id) + "_" + str(i*3+j) + ".jpg"
                     if os.path.exists(ext_filename) == False:
                         self.logger.error("%s is empty " % ext_filename)
                         self.logger.error(shell_cmd_frame)
@@ -173,13 +173,13 @@ class ExtractFrame(object):
         """write the extract result(include successful and fialed) to the txt file"""
         
         # record the problem video id
-        f = open("failed_video_id.txt",  "a")
-        for x in self.failed_video:
+        f = open("failed_video_id.txt",  "w")
+        for x in list(set(self.failed_video)):
             f.writelines(str(x) + "\n")
         f.close()
         # record the exceed video id
-        f = open("exceed_video_id.txt",  "a")
-        for x in self.exceed_video:
+        f = open("exceed_video_id.txt",  "w")
+        for x in list(set(self.exceed_video)):
             f.writelines(str(x) + "\n")
         f.close()
         # record the extract successfully video id
